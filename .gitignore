@@ -2,6 +2,7 @@ node_modules
 *.pyc
 .DS_Store
 /venv
+/.venv
 __pycache__/
 *~
 /src/flask_secret.py
