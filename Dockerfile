@@ -4,10 +4,10 @@
 FROM python:3.10-slim
 
 # Allow statements and log messages to immediately appear in the Knative logs
-ENV PYTHONUNBUFFERED True
+ENV PYTHONUNBUFFERED=True
 
 # Copy local code to the container image.
-ENV APP_HOME /app
+ENV APP_HOME=/app
 WORKDIR $APP_HOME
 
 RUN groupadd -r pyuser && useradd -r -g pyuser pyuser
@@ -44,4 +44,4 @@ RUN cd $APP_HOME && npm install
 # to be equal to the cores available.
 # Timeout is set to 0 to disable the timeouts of the workers to allow Cloud Run to handle instance scaling.
 
-CMD exec $APP_HOME/venv/bin/gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
+CMD ["sh", "-c", "$APP_HOME/venv/bin/gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app"]

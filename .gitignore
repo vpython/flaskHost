@@ -9,3 +9,4 @@ __pycache__/
 # please never check svc.json into the repo!
 svc.json
 .flaskenv
+.env
