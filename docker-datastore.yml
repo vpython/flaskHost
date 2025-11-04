@@ -6,7 +6,7 @@ version: "2"
 
 services:
   datastore:
-    image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+    image: google/cloud-sdk:emulators
     ports:
     - 8081:8081
     volumes:
