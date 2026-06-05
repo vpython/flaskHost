@@ -1676,11 +1676,108 @@ $(function () {
                         menu:      ['bind','choices','index','selected','pos','disabled'],
                     }
 
+                    // color.X constants and color.gray() function
+                    var colorConstants = ['red','green','blue','cyan','magenta','yellow','orange','purple','white','black']
+                    var colorConstantDocs = {
+                        red:'vec(1,0,0)', green:'vec(0,1,0)', blue:'vec(0,0,1)',
+                        cyan:'vec(0,1,1)', magenta:'vec(1,0,1)', yellow:'vec(1,1,0)',
+                        orange:'vec(1,0.6,0)', purple:'vec(0.4,0,1)', white:'vec(1,1,1)', black:'vec(0,0,0)'
+                    }
+
                     var memberMap = {
-                        color:    ['red','green','blue','cyan','magenta','yellow','orange','purple','white','black','gray'],
                         textures: ['rock','rough','wood','gravel','metal','granite','stucco','stones','checker','checks','marble','earth','cloud','flower','water','ice'],
                         shapes:   ['rectangle','circle','triangle','pentagon','hexagon','cross','L_shape','T_shape','arc','ring','line','points'],
                         paths:    ['circle','rectangle','line','arc']
+                    }
+
+                    // Type and description for each parameter name
+                    var paramInfo = {
+                        pos:         { type:'vector',   doc:'Position. Default: `vec(0,0,0)`' },
+                        color:       { type:'vector',   doc:'Color. Use `color.red`, `vec(r,g,b)`, etc. Default: `color.white`' },
+                        opacity:     { type:'scalar',   doc:'Transparency: 0=invisible, 1=opaque. Default: 1' },
+                        axis:        { type:'vector',   doc:'Orientation and length. Default: `vec(1,0,0)`' },
+                        visible:     { type:'boolean',  doc:'Whether the object is displayed. Default: `True`' },
+                        texture:     { type:'string',   doc:'Surface texture. Use `textures.wood`, a file path, or URL' },
+                        make_trail:  { type:'boolean',  doc:'Leave a trail as the object moves. Default: `False`' },
+                        shininess:   { type:'scalar',   doc:'0 = matte, 1 = highly shiny. Default: 0.6' },
+                        emissive:    { type:'boolean',  doc:'If `True`, object glows (unaffected by scene lighting). Default: `False`' },
+                        canvas:      { type:'canvas',   doc:'Canvas to place the object in. Default: most recently created canvas' },
+                        up:          { type:'vector',   doc:'Which direction is "up" for the object. Default: `vec(0,1,0)`' },
+                        group:       { type:'group',    doc:'Group this object belongs to' },
+                        radius:      { type:'scalar',   doc:'Radius. Default: 1' },
+                        length:      { type:'scalar',   doc:'Length along axis. Default: 1' },
+                        height:      { type:'scalar',   doc:'Height. Default: 1' },
+                        width:       { type:'scalar',   doc:'Width. Default: 1' },
+                        size:        { type:'vector',   doc:'Size as `vec(length, height, width)`' },
+                        thickness:   { type:'scalar',   doc:'Thickness of the ring or helix strand. Default: 0.1*radius' },
+                        coils:       { type:'scalar',   doc:'Number of coils. Default: 5' },
+                        shaftwidth:  { type:'scalar',   doc:'Width of arrow shaft. Default: 0.1*length' },
+                        headwidth:   { type:'scalar',   doc:'Width of arrowhead. Default: 2*shaftwidth' },
+                        headlength:  { type:'scalar',   doc:'Length of arrowhead. Default: 3*shaftwidth' },
+                        retain:      { type:'integer',  doc:'Max points to keep in curve. Default: -1 (unlimited)' },
+                        origin:      { type:'vector',   doc:'Offset applied to all curve points' },
+                        size_units:  { type:'string',   doc:'`"world"` (default) or `"pixels"`' },
+                        text:        { type:'string',   doc:'Text to display' },
+                        xoffset:     { type:'scalar',   doc:'Horizontal pixel offset from `pos`. Default: 0' },
+                        yoffset:     { type:'scalar',   doc:'Vertical pixel offset from `pos`. Default: 0' },
+                        space:       { type:'scalar',   doc:'Radius of blank sphere around `pos`. Default: 0' },
+                        border:      { type:'scalar',   doc:'Padding inside label box in pixels. Default: 5' },
+                        font:        { type:'string',   doc:'Font name. Default: `"sans"`' },
+                        align:       { type:'string',   doc:'`"left"`, `"right"`, or `"center"`. Default: `"center"`' },
+                        background:  { type:'vector',   doc:'Background color. Default: `color.black`' },
+                        box:         { type:'boolean',  doc:'Draw a box around the label. Default: `True`' },
+                        line:        { type:'boolean',  doc:'Draw a line to `pos`. Default: `True`' },
+                        linecolor:   { type:'vector',   doc:'Color of the line. Default: same as `color`' },
+                        linewidth:   { type:'scalar',   doc:'Line width in pixels. Default: 1' },
+                        billboard:   { type:'boolean',  doc:'If `True`, text always faces the camera. Default: `False`' },
+                        depth:       { type:'scalar',   doc:'Depth of extruded text. Default: 0.2*height' },
+                        title:       { type:'string',   doc:'Text displayed above the canvas' },
+                        caption:     { type:'string',   doc:'Text displayed below the canvas' },
+                        resizable:   { type:'boolean',  doc:'User can resize the canvas. Default: `True`' },
+                        pixel_to_world: { type:'scalar',doc:'Width of one pixel in world units (read-only)' },
+                        aria_label:  { type:'string',   doc:'Accessible label for screen readers' },
+                        caption_aria_live: { type:'string', doc:'`"polite"`, `"assertive"`, or `"off"` — announces caption changes to screen readers' },
+                        xtitle:      { type:'string',   doc:'Label for the x-axis' },
+                        ytitle:      { type:'string',   doc:'Label for the y-axis' },
+                        xmin:        { type:'scalar',   doc:'Minimum x value (auto-scaled if omitted)' },
+                        xmax:        { type:'scalar',   doc:'Maximum x value (auto-scaled if omitted)' },
+                        ymin:        { type:'scalar',   doc:'Minimum y value (auto-scaled if omitted)' },
+                        ymax:        { type:'scalar',   doc:'Maximum y value (auto-scaled if omitted)' },
+                        foreground:  { type:'vector',   doc:'Color of axes and labels. Default: `color.black`' },
+                        scroll:      { type:'boolean',  doc:'Scroll graph horizontally. Default: `False`' },
+                        fast:        { type:'boolean',  doc:'Faster but less precise rendering. Default: `True`' },
+                        logx:        { type:'boolean',  doc:'Logarithmic x-axis. Default: `False`' },
+                        logy:        { type:'boolean',  doc:'Logarithmic y-axis. Default: `False`' },
+                        label:       { type:'string',   doc:'Legend label for this plot' },
+                        legend:      { type:'boolean',  doc:'Show a legend entry. Default: `True`' },
+                        data:        { type:'list',     doc:'Initial data as `[[x,y], ...]`' },
+                        graph:       { type:'graph',    doc:'Graph to plot on. Default: most recently created graph' },
+                        delta:       { type:'scalar',   doc:'Bar width. Default: 1' },
+                        bind:        { type:'function', doc:'Function called when the widget is activated' },
+                        disabled:    { type:'boolean',  doc:'If `True`, widget is grayed out and inactive. Default: `False`' },
+                        checked:     { type:'boolean',  doc:'Initial checked state. Default: `False`' },
+                        name:        { type:'string',   doc:'Name shared by radio buttons in a group' },
+                        id:          { type:'any',      doc:'Custom identifier, available as `evt.id` in the handler' },
+                        msg:         { type:'string',   doc:'Tooltip message shown on hover' },
+                        min:         { type:'scalar',   doc:'Minimum slider value. Default: 0' },
+                        max:         { type:'scalar',   doc:'Maximum slider value. Default: 1' },
+                        value:       { type:'scalar',   doc:'Current value' },
+                        step:        { type:'scalar',   doc:'Step size. Default: 0.001*(max-min)' },
+                        vertical:    { type:'boolean',  doc:'Vertical slider. Default: `False`' },
+                        left:        { type:'scalar',   doc:'Left margin in pixels. Default: 12' },
+                        right:       { type:'scalar',   doc:'Right margin in pixels. Default: 12' },
+                        top:         { type:'scalar',   doc:'Top margin in pixels. Default: 0' },
+                        bottom:      { type:'scalar',   doc:'Bottom margin in pixels. Default: 0' },
+                        choices:     { type:'list',     doc:'List of option strings' },
+                        index:       { type:'integer',  doc:'Initially selected index. Default: 0' },
+                        selected:    { type:'string',   doc:'Currently selected text (readable/settable)' },
+                        aria_hidden: { type:'boolean',  doc:'If `True`, hidden from screen readers' },
+                        aria_labelledby:  { type:'widget', doc:'Widget whose text provides the accessible label' },
+                        aria_describedby: { type:'widget', doc:'Widget whose text provides the accessible description' },
+                        on_focus:    { type:'function', doc:'Called when the slider receives focus' },
+                        x:           { type:'scalar',   doc:'x component' },
+                        y:           { type:'scalar',   doc:'y component' },
+                        z:           { type:'scalar',   doc:'z component' },
                     }
 
                     // Returns the name of the innermost VPython function call the cursor is inside, or null
@@ -1736,7 +1833,22 @@ $(function () {
 
                             var dotMatch = textUntilPosition.match(/(\w+)\.$/)
                             if (dotMatch) {
-                                var members = memberMap[dotMatch[1]]
+                                var obj = dotMatch[1]
+                                if (obj === 'color') {
+                                    var suggestions = colorConstants.map(function(c) {
+                                        return { label: c, kind: monaco.languages.CompletionItemKind.EnumMember,
+                                            detail: 'vector', documentation: { value: colorConstantDocs[c] },
+                                            insertText: c, range: range }
+                                    })
+                                    suggestions.push({ label: 'gray(...)', kind: monaco.languages.CompletionItemKind.Function,
+                                        detail: '(luminance) → vector',
+                                        documentation: { value: '`luminance`: 0.0 (black) to 1.0 (white)\n\nExample: `color.gray(0.5)`' },
+                                        insertText: 'gray(${1:0.5})',
+                                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                        range: range })
+                                    return { suggestions: suggestions }
+                                }
+                                var members = memberMap[obj]
                                 if (!members) return { suggestions: [] }
                                 return {
                                     suggestions: members.map(function(m) {
@@ -1749,7 +1861,11 @@ $(function () {
                             if (enclosingCall && !isInValuePosition(textUntilPosition)) {
                                 return {
                                     suggestions: vpythonSignatures[enclosingCall].map(function(p) {
-                                        return { label: p + '=', kind: monaco.languages.CompletionItemKind.Field, insertText: p + '=', range: range }
+                                        var info = paramInfo[p] || {}
+                                        return { label: p + '=', kind: monaco.languages.CompletionItemKind.Field,
+                                            detail: info.type || '',
+                                            documentation: info.doc ? { value: info.doc } : undefined,
+                                            insertText: p + '=', range: range }
                                     })
                                 }
                             }
