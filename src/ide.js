@@ -1643,6 +1643,158 @@ $(function () {
                 let wmargin = 40 // from right edge of text to right edge of window
                 let hmargin = 60 // from bottom of text to bottom of window
 
+                if (!window._vpythonCompletionsRegistered) {
+                    window._vpythonCompletionsRegistered = true
+
+                    var vpythonSignatures = {
+                        sphere:    ['pos','radius','color','size','axis','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
+                        box:       ['pos','length','height','width','size','axis','color','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
+                        cylinder:  ['pos','axis','color','radius','length','size','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
+                        cone:      ['pos','axis','radius','color','length','size','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
+                        arrow:     ['pos','axis','color','round','shaftwidth','headwidth','headlength','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
+                        helix:     ['pos','axis','color','radius','thickness','length','coils','size','ccw','opacity','shininess','visible','emissive','canvas','make_trail','up'],
+                        ring:      ['pos','axis','radius','thickness','color','size','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
+                        ellipsoid: ['pos','length','height','width','color','size','axis','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
+                        pyramid:   ['pos','axis','color','length','height','width','size','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
+                        curve:     ['pos','color','radius','size','origin','axis','retain','shininess','visible','emissive','canvas','up'],
+                        points:    ['pos','color','radius','size_units','opacity','shininess','visible','emissive','canvas'],
+                        label:     ['pos','text','xoffset','yoffset','space','height','border','font','color','align','background','opacity','box','line','linecolor','linewidth','visible','canvas'],
+                        text:      ['text','align','color','font','billboard','axis','pos','start_face_color','end_face_color','opacity','height','length','depth','visible','emissive','shininess','canvas','up','group'],
+                        canvas:    ['width','height','background','visible','resizable','align','title','caption','pixel_to_world','aria_label','caption_aria_live'],
+                        vector:    ['x','y','z'],
+                        vec:       ['x','y','z'],
+                        graph:     ['title','xtitle','ytitle','xmin','xmax','ymin','ymax','width','height','background','foreground','align','scroll','fast','logx','logy','aria_label'],
+                        gcurve:    ['color','label','legend','width','data','graph'],
+                        gdots:     ['color','label','legend','size','data','graph'],
+                        gvbars:    ['color','delta','label','legend','data','graph'],
+                        ghbars:    ['color','delta','label','legend','data','graph'],
+                        button:    ['bind','text','pos','color','background','disabled','aria_label'],
+                        checkbox:  ['bind','text','checked','pos','disabled','id','msg','aria_label'],
+                        radio:     ['bind','text','name','checked','pos','disabled','id','aria_label'],
+                        slider:    ['bind','min','max','step','value','length','width','vertical','left','right','top','bottom','align','pos','disabled','aria_label','aria_labelledby','aria_describedby','on_focus'],
+                        wtext:     ['text','aria_hidden'],
+                        menu:      ['bind','choices','index','selected','pos','disabled'],
+                    }
+
+                    var memberMap = {
+                        color:    ['red','green','blue','cyan','magenta','yellow','orange','purple','white','black','gray','grey'],
+                        textures: ['rock','rough','wood','gravel','metal','granite','stucco','stones','checker','checks','marble','earth','cloud','flower','water','ice'],
+                        shapes:   ['rectangle','circle','triangle','pentagon','hexagon','cross','L_shape','T_shape','arc','ring','line','points'],
+                        paths:    ['circle','rectangle','line','arc']
+                    }
+
+                    // Returns the name of the innermost VPython function call the cursor is inside, or null
+                    function getEnclosingCall(text) {
+                        var depth = 0
+                        for (var i = text.length - 1; i >= 0; i--) {
+                            var ch = text[i]
+                            if (ch === ')') { depth++ }
+                            else if (ch === '(') {
+                                if (depth === 0) {
+                                    var m = text.substring(0, i).match(/(\w+)\s*$/)
+                                    return (m && vpythonSignatures[m[1]]) ? m[1] : null
+                                }
+                                depth--
+                            }
+                        }
+                        return null
+                    }
+
+                    monaco.languages.registerCompletionItemProvider('python', {
+                        triggerCharacters: ['.', '(', ','],
+                        provideCompletionItems: function(model, position) {
+                            var textUntilPosition = model.getValueInRange({
+                                startLineNumber: position.lineNumber,
+                                startColumn: 1,
+                                endLineNumber: position.lineNumber,
+                                endColumn: position.column
+                            })
+                            var word = model.getWordUntilPosition(position)
+                            var range = {
+                                startLineNumber: position.lineNumber,
+                                endLineNumber: position.lineNumber,
+                                startColumn: word.startColumn,
+                                endColumn: word.endColumn
+                            }
+
+                            var dotMatch = textUntilPosition.match(/(\w+)\.$/)
+                            if (dotMatch) {
+                                var members = memberMap[dotMatch[1]]
+                                if (!members) return { suggestions: [] }
+                                return {
+                                    suggestions: members.map(function(m) {
+                                        return { label: m, kind: monaco.languages.CompletionItemKind.EnumMember, insertText: m, range: range }
+                                    })
+                                }
+                            }
+
+                            var enclosingCall = getEnclosingCall(textUntilPosition)
+                            if (enclosingCall) {
+                                return {
+                                    suggestions: vpythonSignatures[enclosingCall].map(function(p) {
+                                        return { label: p + '=', kind: monaco.languages.CompletionItemKind.Field, insertText: p + '=', range: range }
+                                    })
+                                }
+                            }
+
+                            var topLevel = [
+                                'sphere','box','cylinder','cone','arrow','curve','helix','ring',
+                                'ellipsoid','pyramid','text','label','points','compound','extrusion',
+                                'canvas','vector','vec','rate','sleep','color','textures','shapes','paths',
+                                'graph','gcurve','gdots','gvbars','ghbars',
+                                'mag','norm','hat','cross','dot','diff_angle','rotate',
+                                'pi','scene',
+                                'button','checkbox','radio','slider','wtext','menu'
+                            ]
+                            return {
+                                suggestions: topLevel.map(function(sym) {
+                                    return { label: sym, kind: monaco.languages.CompletionItemKind.Function, insertText: sym, range: range }
+                                })
+                            }
+                        }
+                    })
+
+                    monaco.languages.registerSignatureHelpProvider('python', {
+                        signatureHelpTriggerCharacters: ['(', ','],
+                        provideSignatureHelp: function(model, position) {
+                            var fullText = model.getValueInRange({
+                                startLineNumber: 1, startColumn: 1,
+                                endLineNumber: position.lineNumber, endColumn: position.column
+                            })
+                            var depth = 0, commas = 0, funcName = null
+                            for (var i = fullText.length - 1; i >= 0; i--) {
+                                var ch = fullText[i]
+                                if (ch === ')') { depth++ }
+                                else if (ch === '(') {
+                                    if (depth === 0) {
+                                        var m = fullText.substring(0, i).match(/(\w+)\s*$/)
+                                        if (m && vpythonSignatures[m[1]]) { funcName = m[1]; break }
+                                        return null
+                                    }
+                                    depth--
+                                } else if (ch === ',' && depth === 0) { commas++ }
+                            }
+                            if (!funcName) return null
+                            var params = vpythonSignatures[funcName]
+                            var label = funcName + '(' + params.join(', ') + ')'
+                            return {
+                                value: {
+                                    signatures: [{
+                                        label: label,
+                                        parameters: params.map(function(p) {
+                                            var idx = label.indexOf(p)
+                                            return { label: [idx, idx + p.length] }
+                                        })
+                                    }],
+                                    activeSignature: 0,
+                                    activeParameter: Math.min(commas, params.length - 1)
+                                },
+                                dispose: function() {}
+                            }
+                        }
+                    })
+                }
+
                 var editor = monaco.editor.create(document.getElementById('editorContainer'), {
                     language: 'python',
                     value: progData.source,
