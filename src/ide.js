@@ -1647,37 +1647,37 @@ $(function () {
                     window._vpythonCompletionsRegistered = true
 
                     var vpythonSignatures = {
-                        sphere:    ['pos','radius','color','size','axis','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
-                        box:       ['pos','length','height','width','size','axis','color','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
-                        cylinder:  ['pos','axis','color','radius','length','size','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
-                        cone:      ['pos','axis','radius','color','length','size','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
-                        arrow:     ['pos','axis','color','round','shaftwidth','headwidth','headlength','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
-                        helix:     ['pos','axis','color','radius','thickness','length','coils','size','ccw','opacity','shininess','visible','emissive','canvas','make_trail','up'],
-                        ring:      ['pos','axis','radius','thickness','color','size','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
-                        ellipsoid: ['pos','length','height','width','color','size','axis','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
-                        pyramid:   ['pos','axis','color','length','height','width','size','opacity','shininess','texture','make_trail','visible','emissive','canvas','up','group'],
-                        curve:     ['pos','color','radius','size','origin','axis','retain','shininess','visible','emissive','canvas','up'],
-                        points:    ['pos','color','radius','size_units','opacity','shininess','visible','emissive','canvas'],
-                        label:     ['pos','text','xoffset','yoffset','space','height','border','font','color','align','background','opacity','box','line','linecolor','linewidth','visible','canvas'],
-                        text:      ['text','align','color','font','billboard','axis','pos','start_face_color','end_face_color','opacity','height','length','depth','visible','emissive','shininess','canvas','up','group'],
-                        canvas:    ['width','height','background','visible','resizable','align','title','caption','pixel_to_world','aria_label','caption_aria_live'],
+                        sphere:    ['pos','radius','color','opacity','axis','visible','texture','make_trail','shininess','emissive','canvas','up','group'],
+                        box:       ['pos','length','height','width','color','opacity','axis','visible','texture','make_trail','shininess','emissive','canvas','up','group'],
+                        cylinder:  ['pos','axis','radius','color','opacity','visible','texture','make_trail','shininess','emissive','canvas','up','group'],
+                        cone:      ['pos','axis','radius','color','opacity','visible','texture','make_trail','shininess','emissive','canvas','up','group'],
+                        arrow:     ['pos','axis','color','opacity','shaftwidth','headwidth','headlength','visible','texture','make_trail','shininess','emissive','canvas','up','group'],
+                        helix:     ['pos','axis','radius','coils','thickness','color','opacity','visible','shininess','emissive','canvas','make_trail','up'],
+                        ring:      ['pos','axis','radius','thickness','color','opacity','visible','texture','make_trail','shininess','emissive','canvas','up','group'],
+                        ellipsoid: ['pos','length','height','width','color','opacity','axis','visible','texture','make_trail','shininess','emissive','canvas','up','group'],
+                        pyramid:   ['pos','axis','length','height','width','color','opacity','visible','texture','make_trail','shininess','emissive','canvas','up','group'],
+                        curve:     ['pos','color','radius','retain','visible','origin','shininess','emissive','canvas','up'],
+                        points:    ['pos','color','radius','opacity','size_units','visible','shininess','emissive','canvas'],
+                        label:     ['pos','text','color','height','opacity','align','xoffset','yoffset','background','border','font','box','line','linecolor','linewidth','visible','canvas'],
+                        text:      ['text','pos','height','color','align','opacity','font','billboard','axis','depth','visible','shininess','emissive','canvas','up','group'],
+                        canvas:    ['width','height','background','title','caption','aria_label','caption_aria_live','visible','resizable','align','pixel_to_world'],
                         vector:    ['x','y','z'],
                         vec:       ['x','y','z'],
-                        graph:     ['title','xtitle','ytitle','xmin','xmax','ymin','ymax','width','height','background','foreground','align','scroll','fast','logx','logy','aria_label'],
+                        graph:     ['title','xtitle','ytitle','xmin','xmax','ymin','ymax','width','height','aria_label','background','foreground','align','scroll','fast','logx','logy'],
                         gcurve:    ['color','label','legend','width','data','graph'],
                         gdots:     ['color','label','legend','size','data','graph'],
                         gvbars:    ['color','delta','label','legend','data','graph'],
                         ghbars:    ['color','delta','label','legend','data','graph'],
-                        button:    ['bind','text','pos','color','background','disabled','aria_label'],
-                        checkbox:  ['bind','text','checked','pos','disabled','id','msg','aria_label'],
-                        radio:     ['bind','text','name','checked','pos','disabled','id','aria_label'],
-                        slider:    ['bind','min','max','step','value','length','width','vertical','left','right','top','bottom','align','pos','disabled','aria_label','aria_labelledby','aria_describedby','on_focus'],
+                        button:    ['bind','text','color','background','disabled','aria_label','pos'],
+                        checkbox:  ['bind','text','checked','disabled','aria_label','msg','id','pos'],
+                        radio:     ['bind','text','name','checked','aria_label','disabled','id','pos'],
+                        slider:    ['bind','min','max','value','step','length','aria_label','aria_labelledby','aria_describedby','disabled','on_focus','width','vertical','align','pos'],
                         wtext:     ['text','aria_hidden'],
                         menu:      ['bind','choices','index','selected','pos','disabled'],
                     }
 
                     var memberMap = {
-                        color:    ['red','green','blue','cyan','magenta','yellow','orange','purple','white','black','gray','grey'],
+                        color:    ['red','green','blue','cyan','magenta','yellow','orange','purple','white','black','gray'],
                         textures: ['rock','rough','wood','gravel','metal','granite','stucco','stones','checker','checks','marble','earth','cloud','flower','water','ice'],
                         shapes:   ['rectangle','circle','triangle','pentagon','hexagon','cross','L_shape','T_shape','arc','ring','line','points'],
                         paths:    ['circle','rectangle','line','arc']
@@ -1698,6 +1698,23 @@ $(function () {
                             }
                         }
                         return null
+                    }
+
+                    // Returns true when the cursor is after '=' in a keyword argument value position,
+                    // e.g. sphere(pos=<cursor>) — should suggest values, not more parameter names
+                    function isInValuePosition(text) {
+                        var depth = 0
+                        for (var i = text.length - 1; i >= 0; i--) {
+                            var ch = text[i]
+                            if (ch === ')') { depth++ }
+                            else if (ch === '(') {
+                                if (depth === 0) return text.substring(i + 1).indexOf('=') >= 0
+                                depth--
+                            } else if (ch === ',' && depth === 0) {
+                                return text.substring(i + 1).indexOf('=') >= 0
+                            }
+                        }
+                        return false
                     }
 
                     monaco.languages.registerCompletionItemProvider('python', {
@@ -1729,7 +1746,7 @@ $(function () {
                             }
 
                             var enclosingCall = getEnclosingCall(textUntilPosition)
-                            if (enclosingCall) {
+                            if (enclosingCall && !isInValuePosition(textUntilPosition)) {
                                 return {
                                     suggestions: vpythonSignatures[enclosingCall].map(function(p) {
                                         return { label: p + '=', kind: monaco.languages.CompletionItemKind.Field, insertText: p + '=', range: range }
