@@ -31,8 +31,10 @@ import base64
 import re
 from . import app, auth
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from google.auth.transport import requests
+from google.oauth2 import id_token
+from google.auth.transport.requests import Request as GoogleAuthRequest
 import urllib.parse
 import functools
 import traceback
@@ -63,6 +65,9 @@ def chrange(b, e): return set(chr(x) for x in range(ord(b), ord(e)+1))
 
 unreserved = chrange('A', 'Z') | chrange(
     'a', 'z') | chrange('0', '9') | set("-_.~")
+
+_SCHEDULER_AUDIENCE = os.environ.get('SCHEDULER_AUDIENCE', '')
+_SCHEDULER_SA = os.environ.get('SCHEDULER_SA', '')
 
 # See documentation of db.Model at https://cloud.google.com/appengine/docs/python/datastore/modelclass
 # Newer ndb:                       https://cloud.google.com/appengine/docs/standard/python/ndb/db_to_n
@@ -161,6 +166,57 @@ def root():
     base_url = get_url_root()
     #load_url = loadURL(url)
     return flask.render_template('index.html', sandbox_url=sandbox_url, docs_home_url=docs_home_url, base_url=base_url, wasm_url=wasm_url)
+
+
+@app.route('/plotusers')
+def plotusers():
+    raw = db.get_setting('user_count_history')
+    if not raw:
+        return flask.render_template('plotusers.html', points=[], updated=None, no_data=True)
+    try:
+        history = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        return flask.render_template('plotusers.html', points=[], updated=None, no_data=True)
+    return flask.render_template('plotusers.html',
+                                 points=history.get('points', []),
+                                 updated=history.get('updated'),
+                                 no_data=False)
+
+
+@app.route('/admin/update-user-count')
+def update_user_count():
+    auth_header = flask.request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer ') or not _SCHEDULER_SA or not _SCHEDULER_AUDIENCE:
+        return flask.Response('Forbidden', status=403)
+    try:
+        claim = id_token.verify_oauth2_token(
+            auth_header[7:], GoogleAuthRequest(), audience=_SCHEDULER_AUDIENCE
+        )
+        if claim.get('email') != _SCHEDULER_SA:
+            return flask.Response('Forbidden', status=403)
+    except Exception:
+        return flask.Response('Forbidden', status=403)
+
+    count = db.count_users()
+
+    raw = db.get_setting('user_count_history')
+    if not raw:
+        history = {'points': []}
+    else:
+        try:
+            history = json.loads(raw)
+            if 'points' not in history:
+                history['points'] = []
+        except (json.JSONDecodeError, ValueError):
+            history = {'points': []}
+
+    now = datetime.now(timezone.utc)
+    history['updated'] = now.strftime('%Y-%m-%d')
+    history['points'].append({'month': now.strftime('%Y-%m'), 'count': count})
+
+    db.set_setting('user_count_history', json.dumps(history))
+    return flask.Response('OK', status=200)
+
 
 #
 # Here are some utilities for validating names, hosts, and usernames

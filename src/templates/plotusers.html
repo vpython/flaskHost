@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Web VPython Users</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    #chart { width: 100%; height: 600px; }
+    .no-data { color: #888; font-style: italic; margin-top: 40px; }
+  </style>
+</head>
+<body>
+  <script src="/package/plotlyVP7.min.js"></script>
+
+  {% if no_data %}
+  <p class="no-data">No data yet — run <code>buildUserHistory.py</code> first.</p>
+  {% else %}
+  <div id="chart"></div>
+  <script>
+    const points = {{ points | tojson }};
+    const updated = {{ updated | tojson }};
+
+    function toDecimalYear(monthStr) {
+      const [year, month] = monthStr.split('-').map(Number);
+      return year + (month - 1) / 12;
+    }
+
+    if (points.length === 0) {
+      document.getElementById('chart').innerHTML = '<p class="no-data">No data points available.</p>';
+    } else {
+      const xs = points.map(p => toDecimalYear(p.month));
+      const ys = points.map(p => p.count);
+
+      const lastPoint = points[points.length - 1];
+      const formattedDate = updated ? updated.replace(/-/g, '/') : '';
+      const formattedCount = lastPoint.count.toLocaleString();
+      const title = `As of ${formattedDate} there were ${formattedCount} Web VPython accounts.`;
+
+      try {
+        Plotly.newPlot('chart', [{
+          x: xs,
+          y: ys,
+          mode: 'lines+markers',
+          type: 'scatter',
+          marker: { color: 'red', size: 4 },
+          line: { color: 'red', width: 1 }
+        }], {
+          title: title,
+          xaxis: { title: 'Year' },
+          yaxis: { title: 'Web VPython accounts' },
+          margin: { t: 60 }
+        });
+      } catch (e) {
+        document.getElementById('chart').innerHTML = '<p class="no-data">Chart failed to render: ' + e.message + '</p>';
+      }
+    }
+  </script>
+  {% endif %}
+</body>
+</html>
