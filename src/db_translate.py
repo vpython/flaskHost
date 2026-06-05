@@ -72,6 +72,21 @@ class DBGlue(abc.ABC):
     def set_datetime(self, obj, dt):
         pass
 
+    @abc.abstractmethod
+    def count_users(self):
+        """Return the current number of User records."""
+        pass
+
+    @abc.abstractmethod
+    def get_setting(self, key):
+        """Return the value string for the given setting key, or None if not set."""
+        pass
+
+    @abc.abstractmethod
+    def set_setting(self, key, value):
+        """Persist value string for the given setting key (upsert)."""
+        pass
+
 
 class NDB_DBGlue(DBGlue):
 
@@ -137,6 +152,22 @@ class NDB_DBGlue(DBGlue):
 
     def set_datetime(self, obj, dt):
         obj.datetime = dt
+
+    def count_users(self):
+        return ndb_models.User.query().count()
+
+    def get_setting(self, key):
+        setting = ndb_models.ndb.Key('Setting', key).get()
+        if not setting or setting.value == 'NOT SET':
+            return None
+        return setting.value
+
+    def set_setting(self, key, value):
+        setting = ndb_models.ndb.Key('Setting', key).get()
+        if not setting:
+            setting = ndb_models.Setting(id=key)
+        setting.value = value
+        setting.put()
 
 
 class MONGO_DBGlue(DBGlue):
@@ -215,6 +246,24 @@ class MONGO_DBGlue(DBGlue):
 
     def set_datetime(self, obj, dt):
         obj.date_time = dt
+
+    def count_users(self):
+        return self.client.gldb['User'].count_documents({})
+
+    def get_setting(self, key):
+        setting = mongo_models.Setting.find({"key": key}).first_or_none()
+        if not setting or setting.value == 'NOT SET':
+            return None
+        return setting.value
+
+    def set_setting(self, key, value):
+        setting = mongo_models.Setting.find({"key": key}).first_or_none()
+        if setting is None:
+            setting = mongo_models.Setting(key=key, value=value)
+        else:
+            setting.value = value
+        setting.save()
+
 
 def setupDB():
     """ If MONGO_URL is set, use MongoDB, otherwise use NDB """

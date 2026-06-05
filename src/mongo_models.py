@@ -10,7 +10,7 @@ from pymongo import MongoClient
 def init_client(MONGO_URL):
     # Wrap the app in middleware.
     client =  MongoClient(MONGO_URL)
-    init_bunnet(database=client.gldb, document_models=[User, Folder, Program])
+    init_bunnet(database=client.gldb, document_models=[User, Folder, Program, Setting])
     return client
 
 class User(Document):
@@ -54,4 +54,10 @@ class Program (Document):
     @datetime.setter
     def datetime(self, value):
         self.date_time = value
+
+
+class Setting(Document):
+    """Key-value settings store"""
+    key: Indexed(str, unique=True)
+    value: str = 'NOT SET'
 
