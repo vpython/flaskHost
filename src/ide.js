@@ -1624,21 +1624,20 @@ $(function () {
         	var lang = parseVersionHeader(progData.source).lang
             if (!(lang == 'javascript' || lang == 'vpython')) lang = 'javascript'
             
-            if (navigator.userAgent.match(/Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i)) {
-	        	var editor = GSedit
-	            window.editor = editor
-	            editor.init(page.find(".program-editor"), progData.source, !isWritable)
-	            if (isWritable) {
-	                var save = saver( {user:username, folder:folder, program:program},
-	                    function () { return editor.getValue() },
-	                    function (status) { page.find(".program-status").text(" ("+status+")") }
-	                )
-	                // Save immediately when navigating away from this page
-	                onNavigate.on(function (cb) { save(0, cb) })
-	                editor.change = function () {
-	                    save(1000)  // Save after 1 second of not typing
-	                }
-	            }            	
+            var isMobileDevice = navigator.userAgent.match(/Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i)
+                || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent))
+            if (isMobileDevice) {
+                var editor = GSedit
+                window.editor = editor
+                editor.init(page.find(".program-editor"), progData.source, !isWritable)
+                if (isWritable) {
+                    var save = saver( {user:username, folder:folder, program:program},
+                        function () { return editor.getValue() },
+                        function (status) { page.find(".program-status").text(" ("+status+")") }
+                    )
+                    onNavigate.on(function (cb) { save(0, cb) })
+                    editor.change = function () { save(1000) }
+                }
             } else {
                 let wmargin = 40 // from right edge of text to right edge of window
                 let hmargin = 60 // from bottom of text to bottom of window
@@ -1674,6 +1673,48 @@ $(function () {
                         slider:    ['bind','min','max','value','step','length','aria_label','aria_labelledby','aria_describedby','disabled','on_focus','width','vertical','align','pos'],
                         wtext:     ['text','aria_hidden'],
                         menu:      ['bind','choices','index','selected','pos','disabled'],
+                        // Python built-in functions
+                        range:     ['start', 'stop', 'step'],
+                        print:     ['*values'],
+                        len:       ['object'],
+                        abs:       ['x'],
+                        round:     ['number', 'ndigits'],
+                        int:       ['x'],
+                        float:     ['x'],
+                        str:       ['object'],
+                        bool:      ['x'],
+                        list:      ['iterable'],
+                        tuple:     ['iterable'],
+                        set:       ['iterable'],
+                        dict:      [],
+                        type:      ['object'],
+                        isinstance:['object', 'classinfo'],
+                        input:     ['prompt'],
+                        sum:       ['iterable', 'start'],
+                        max:       ['iterable'],
+                        min:       ['iterable'],
+                        sorted:    ['iterable', 'key', 'reverse'],
+                        reversed:  ['sequence'],
+                        enumerate: ['iterable', 'start'],
+                        zip:       ['*iterables'],
+                        map:       ['function', 'iterable'],
+                        filter:    ['function', 'iterable'],
+                        // Math functions available in VPython
+                        sqrt:      ['x'],
+                        sin:       ['x'],
+                        cos:       ['x'],
+                        tan:       ['x'],
+                        asin:      ['x'],
+                        acos:      ['x'],
+                        atan:      ['x'],
+                        atan2:     ['y', 'x'],
+                        degrees:   ['x'],
+                        radians:   ['x'],
+                        floor:     ['x'],
+                        ceil:      ['x'],
+                        log:       ['x', 'base'],
+                        exp:       ['x'],
+                        pow:       ['x', 'y'],
                     }
 
                     // color.X constants and color.gray() function
@@ -1789,7 +1830,10 @@ $(function () {
                             else if (ch === '(') {
                                 if (depth === 0) {
                                     var m = text.substring(0, i).match(/(\w+)\s*$/)
-                                    return (m && vpythonSignatures[m[1]]) ? m[1] : null
+                                    if (!m) return null
+                                    if (vpythonSignatures[m[1]]) return m[1]
+                                    var uf = window._vpythonUserFuncs
+                                    return (uf && uf[m[1]]) ? m[1] : null
                                 }
                                 depth--
                             }
@@ -1859,8 +1903,10 @@ $(function () {
 
                             var enclosingCall = getEnclosingCall(textUntilPosition)
                             if (enclosingCall && !isInValuePosition(textUntilPosition)) {
+                                var callParams = vpythonSignatures[enclosingCall] ||
+                                    (window._vpythonUserFuncs && window._vpythonUserFuncs[enclosingCall]) || []
                                 return {
-                                    suggestions: vpythonSignatures[enclosingCall].map(function(p) {
+                                    suggestions: callParams.map(function(p) {
                                         var info = paramInfo[p] || {}
                                         return { label: p + '=', kind: monaco.languages.CompletionItemKind.Field,
                                             detail: info.type || '',
@@ -1877,13 +1923,26 @@ $(function () {
                                 'graph','gcurve','gdots','gvbars','ghbars',
                                 'mag','norm','hat','cross','dot','diff_angle','rotate',
                                 'pi','scene',
-                                'button','checkbox','radio','slider','wtext','menu'
+                                'button','checkbox','radio','slider','wtext','menu',
+                                'range','len','print','abs','round','int','float','str','bool',
+                                'list','tuple','set','dict','type','isinstance','input',
+                                'sum','max','min','sorted','reversed','enumerate','zip','map','filter',
+                                'sqrt','sin','cos','tan','asin','acos','atan','atan2',
+                                'degrees','radians','floor','ceil','log','exp','pow',
+                                'True','False','None'
                             ]
-                            return {
-                                suggestions: topLevel.map(function(sym) {
-                                    return { label: sym, kind: monaco.languages.CompletionItemKind.Function, insertText: sym, range: range }
-                                })
-                            }
+                            var suggestions = topLevel.map(function(sym) {
+                                return { label: sym, kind: monaco.languages.CompletionItemKind.Function, insertText: sym, range: range }
+                            })
+                            var uf = window._vpythonUserFuncs || {}
+                            Object.keys(uf).forEach(function(fn) {
+                                suggestions.push({ label: fn, kind: monaco.languages.CompletionItemKind.Function, insertText: fn, range: range })
+                            })
+                            var uv = window._vpythonUserVars || []
+                            uv.forEach(function(vn) {
+                                suggestions.push({ label: vn, kind: monaco.languages.CompletionItemKind.Variable, insertText: vn, range: range })
+                            })
+                            return { suggestions: suggestions }
                         }
                     })
 
@@ -1901,14 +1960,14 @@ $(function () {
                                 else if (ch === '(') {
                                     if (depth === 0) {
                                         var m = fullText.substring(0, i).match(/(\w+)\s*$/)
-                                        if (m && vpythonSignatures[m[1]]) { funcName = m[1]; break }
+                                        if (m && (vpythonSignatures[m[1]] || (window._vpythonUserFuncs && window._vpythonUserFuncs[m[1]]))) { funcName = m[1]; break }
                                         return null
                                     }
                                     depth--
                                 } else if (ch === ',' && depth === 0) { commas++ }
                             }
                             if (!funcName) return null
-                            var params = vpythonSignatures[funcName]
+                            var params = vpythonSignatures[funcName] || (window._vpythonUserFuncs && window._vpythonUserFuncs[funcName]) || []
                             var label = funcName + '(' + params.join(', ') + ')'
                             return {
                                 value: {
@@ -1941,7 +2000,34 @@ $(function () {
                     var h = window.innerHeight- hmargin;
                     editor.layout({width: w, height: h});
                 };
-            
+
+                // Document scanner: extract user-defined functions and variables for completions
+                window._vpythonUserFuncs = {}
+                window._vpythonUserVars = []
+                function _scanUserSymbols(model) {
+                    var text = model.getValue()
+                    var funcs = {}, vars = [], seen = {}
+                    var defRe = /^[ \t]*def\s+(\w+)\s*\(([^)]*)\)/gm
+                    var m
+                    while ((m = defRe.exec(text)) !== null) {
+                        var params = m[2].trim() ? m[2].trim().split(/\s*,\s*/).map(function(p) {
+                            return p.replace(/\s*=.*$/, '').replace(/^\*+/, '').trim()
+                        }).filter(Boolean) : []
+                        funcs[m[1]] = params
+                    }
+                    var assignRe = /^(\w+)\s*=/gm
+                    while ((m = assignRe.exec(text)) !== null) {
+                        if (!seen[m[1]] && m[1] !== 'True' && m[1] !== 'False' && m[1] !== 'None') {
+                            seen[m[1]] = true
+                            vars.push(m[1])
+                        }
+                    }
+                    window._vpythonUserFuncs = funcs
+                    window._vpythonUserVars = vars
+                }
+                _scanUserSymbols(editor.getModel())
+                editor.getModel().onDidChangeContent(function() { _scanUserSymbols(editor.getModel()) })
+
                 if (isWritable) {
                     var save = saver( {user:username, folder:folder, program:program},
                         function () { 
