@@ -153,6 +153,18 @@ def favicon_static():
     return flask.send_from_directory('../static/images', r'favicon.ico')
 
 #
+# Diagnostic route — shows current runner URL configuration
+#
+@app.route('/config')
+def config():
+    return flask.jsonify({
+        'PUBLIC_RUNNER_GUEST_URL': os.environ.get('PUBLIC_RUNNER_GUEST_URL'),
+        'PUBLIC_WASM_GUEST_URL':   os.environ.get('PUBLIC_WASM_GUEST_URL'),
+        'PUBLIC_DOCS_HOME':        os.environ.get('PUBLIC_DOCS_HOME'),
+        'GLOWSCRIPT_RUNNING_LOCALLY': os.environ.get('GLOWSCRIPT_RUNNING_LOCALLY'),
+    })
+
+#
 # The root route
 #
 
