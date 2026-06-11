@@ -1482,13 +1482,18 @@ $(function () {
             if (!header.ok)
                 page.find(".embedWarning").text("This program cannot be embedded because its version declaration is unknown.")
             else {
-                embedHTML = '' // Will be an ampty string if there is a compile error
-                if (header.unpackaged) 
-                    page.find(".embedWarning").text("Embedding programs with development versions of GlowScript is not recommended.  They will likely be broken by further changes, and the packages used for embedding may not match the packages used to run in an development version.")
+                embedHTML = '' // Will be an empty string if there is a compile error
+                if (header.wasm || header.unpackaged) {
+                    page.find(".embedWarning").text("HTML export is not available for programs that run via Pyodide (WASM). Use the iframe embed below to include this program in a web page.")
+                    page.find(".embedSource").val('<iframe style="border-style:none; border:0; width:650px; height:500px; margin:0; padding:0;" src="' + run_link + '" allow="hid" frameborder=0></iframe>')
+                    return
+                }
+                var pkg = window.public_package_base_url || "https://storage.googleapis.com/rswvprunner"
+                var pkgv = "?v=" + (window.public_build_stamp || '')
                 var compiler_url
                 if (header.lang == 'vpython') {
-                	compiler_url = "../package/RScompiler." + header.version + ".min.js"
-                } else compiler_url = "../package/compiler." + header.version + ".min.js"
+                	compiler_url = pkg + "/package/RScompiler." + header.version + ".min.js" + pkgv
+                } else compiler_url = pkg + "/package/compiler." + header.version + ".min.js" + pkgv
                 window.glowscript_compile = undefined
                 $.ajax({
                     url: compiler_url,
@@ -1529,7 +1534,7 @@ $(function () {
                     else if (v >= 2.2) verdir = "2.1"
                     else verdir = header.version.substr(0,3)
                     var runner = ''
-                    var exporturl = "https://www."+website+"/"
+                    var exporturl = (window.public_package_base_url || "https://storage.googleapis.com/rswvprunner") + "/"
                     if (v >= 2.5 && v < 3.0) exporturl = "https://s3.amazonaws.com/glowscript/"
                     // Note: some already exported 3.0 programs contain references to s3.amazonaws.com
                     if (header.lang == 'vpython') 
@@ -1559,7 +1564,7 @@ $(function () {
         })
         var frameSrc = run_link
         var frameHTML = '<iframe style="border-style:none; border:0; width:650px; height:500px; margin:0; padding:0;" src="' + frameSrc + '" allow="hid" frameborder=0></iframe>'
-        page.find(".frameSource").text( frameHTML );
+        page.find(".frameSource").html( frameHTML );
     }
     pages.downloadHTML = function(route) { // Download an .html file suitable for running just by clicking it
         if (embedHTML.length > 0) {

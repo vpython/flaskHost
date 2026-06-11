@@ -157,7 +157,13 @@ def favicon_static():
 #
 @app.route('/config')
 def config():
+    try:
+        version_file = os.path.join(os.path.dirname(__file__), '..', 'VERSION')
+        git_hash = open(version_file).read().strip()
+    except Exception:
+        git_hash = 'unknown'
     return flask.jsonify({
+        'git_commit': git_hash,
         'PUBLIC_RUNNER_GUEST_URL': os.environ.get('PUBLIC_RUNNER_GUEST_URL'),
         'PUBLIC_WASM_GUEST_URL':   os.environ.get('PUBLIC_WASM_GUEST_URL'),
         'PUBLIC_DOCS_HOME':        os.environ.get('PUBLIC_DOCS_HOME'),
@@ -174,10 +180,17 @@ def root():
     # get the sandbox URL from environment
     sandbox_url = os.environ.get('PUBLIC_RUNNER_GUEST_URL')
     wasm_url = os.environ.get('PUBLIC_WASM_GUEST_URL')
-    docs_home_url = os.environ.get('PUBLIC_DOCS_HOME')  # get docs home
+    docs_home_url = os.environ.get('PUBLIC_DOCS_HOME')
+    package_base_url = os.environ.get('PUBLIC_PACKAGE_BASE_URL', 'https://storage.googleapis.com/rswvprunner')
     base_url = get_url_root()
-    #load_url = loadURL(url)
-    return flask.render_template('index.html', sandbox_url=sandbox_url, docs_home_url=docs_home_url, base_url=base_url, wasm_url=wasm_url)
+    try:
+        version_file = os.path.join(os.path.dirname(__file__), '..', 'VERSION')
+        build_stamp = open(version_file).read().strip()
+    except Exception:
+        build_stamp = 'dev'
+    return flask.render_template('index.html', sandbox_url=sandbox_url, docs_home_url=docs_home_url,
+                                 base_url=base_url, wasm_url=wasm_url, package_base_url=package_base_url,
+                                 build_stamp=build_stamp)
 
 
 @app.route('/plotusers')

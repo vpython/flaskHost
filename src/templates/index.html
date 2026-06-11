@@ -24,6 +24,8 @@
 <script>
     window.public_runner_guest_url = '{{ sandbox_url }}';
     window.public_wasm_guest_url = '{{ wasm_url }}';
+    window.public_package_base_url = '{{ package_base_url }}';
+    window.public_build_stamp = '{{ build_stamp }}';
 </script>
 </head>
 <body class="ideBody">
@@ -299,7 +301,7 @@ Loading...
 
     <ul>
     <li>You can publish a <em>link</em> to <a class="run-link"></a>. Anyone can run the program here
-    at glowscript.org, or view its source, without having to sign in. 
+    at webvpython.org, or view its source, without having to sign in.
     <b>The program must be in a public folder, not a private folder.</b></li>
     <li>You can publish a link to an entire <b>public</b> folder: <a class="folder-link"></a>.</li>
     <li>Export: you can <em>embed</em> the program, including from a private folder,
@@ -329,6 +331,8 @@ Loading...
         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbspFix the errors and then try again.</em></b><br>&nbsp;&nbsp;&nbsp;
     <span class="embedWarning errorText"></span>
     <p><textarea class="embedSource"></textarea></p>
+    <p><strong>Live preview:</strong></p>
+    <div class="frameSource"></div>
 </div>
 
 <!-- <script type="text/javascript" language="javascript" src="lib/require.min.js"></script> -->
@@ -337,7 +341,7 @@ Loading...
 <script type="text/javascript" language="javascript" src="lib/jquery/IDE/jquery-ui.custom.min.js"></script>
 <script type="text/javascript" language="javascript" src="lib/editor.js"></script>
 <script type="text/javascript" language="javascript" src="package/symbols.3.2.min.js"></script>
-<script type="text/javascript" language="javascript" src="ide.js"></script>
+<script type="text/javascript" language="javascript" src="ide.js?v={{ build_stamp }}"></script>
 
 <script>
     var require = { paths: { vs: 'node_modules/monaco-editor/min/vs' } };
