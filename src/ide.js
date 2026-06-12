@@ -147,6 +147,19 @@ $(function () {
         "3.3dev" : "unpackaged"
     }
 
+    /******** Editor settings (persisted per-browser in localStorage) ***********/
+
+    function getEditorSettings() {
+        try { return JSON.parse(localStorage.getItem('editorSettings')) || {} }
+        catch (err) { return {} }
+    }
+    function saveEditorSetting(name, value) {
+        var settings = getEditorSettings()
+        settings[name] = value
+        try { localStorage.setItem('editorSettings', JSON.stringify(settings)) }
+        catch (err) {} // e.g. private browsing mode; setting just won't persist
+    }
+
     /******** Functions to talk to the API on the server ***********/
     
     var encode = encodeURIComponent
@@ -2009,11 +2022,35 @@ $(function () {
                     })
                 }
 
-                var editor = monaco.editor.create(document.getElementById('editorContainer'), {
+                var hintsOn = getEditorSettings().hints === true // default off: hints can surprise novices
+                function hintOptions(on) {
+                    return {
+                        quickSuggestions: on,
+                        suggestOnTriggerCharacters: on,
+                        parameterHints: { enabled: on },
+                    }
+                }
+
+                var editor = monaco.editor.create(document.getElementById('editorContainer'), Object.assign({
                     language: 'python',
                     value: progData.source,
                     readOnly: !isWritable,
-                })
+                    theme: getEditorSettings().darkMode ? 'vs-dark' : 'vs',
+                }, hintOptions(hintsOn)))
+
+                page.find(".editor-dark-checkbox")
+                    .prop("checked", !!getEditorSettings().darkMode)
+                    .on("change", function() {
+                        monaco.editor.setTheme(this.checked ? 'vs-dark' : 'vs')
+                        saveEditorSetting('darkMode', this.checked)
+                    })
+
+                page.find(".editor-hints-checkbox")
+                    .prop("checked", hintsOn)
+                    .on("change", function() {
+                        editor.updateOptions(hintOptions(this.checked))
+                        saveEditorSetting('hints', this.checked)
+                    })
 
                 editor.layout({width: window.innerWidth-wmargin, height: window.innerHeight-hmargin})
 
