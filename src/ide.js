@@ -1111,6 +1111,14 @@ $(function () {
             	} else {
 	                var header = parseVersionHeader( progData.source )
 	                if (header.ok) {
+                        if (header.wasm && Number(header.version) < 3.2) {
+                            if ($dialog) $dialog.dialog("close")
+                            $dialog = $("#program-error-dialog").clone().removeClass("template")
+                                .find(".error-details").text("The wasm (Pyodide) option requires Web VPython 3.2 or later. Change the program's first line to:").end()
+                                .find(".error-traceback").text("Web VPython 3.2 wasm").end()
+                                .dialog({ width: "600px", autoOpen: true })
+                            return
+                        }
                         var untrusted_src = window.public_runner_guest_url
                         var guest_url = new URL(untrusted_src)
                         untrusted_origin = guest_url.origin
@@ -1304,16 +1312,24 @@ $(function () {
             var program = await response.text()
                 var header = parseVersionHeader( program )
                 if (header.ok) {
+                    if (header.wasm && Number(header.version) < 3.2) {
+                        if ($dialog) $dialog.dialog("close")
+                        $dialog = $("#program-error-dialog").clone().removeClass("template")
+                            .find(".error-details").text("The wasm (Pyodide) option requires Web VPython 3.2 or later. Change the program's first line to:").end()
+                            .find(".error-traceback").text("Web VPython 3.2 wasm").end()
+                            .dialog({ width: "600px", autoOpen: true })
+                        return
+                    }
                     var untrusted_src = window.public_runner_guest_url
                     var guest_url = new URL(untrusted_src)
                     untrusted_origin = guest_url.origin
-                    if (header.lang === 'wasm') {
+                    if (header.wasm) {
                         untrusted_src = window.public_wasm_guest_url
                         guest_url = new URL(untrusted_src)
                         untrusted_origin = guest_url.origin
                     }
                     untrusted_frame.prop("src", untrusted_src)  // Start loading the run script while we wait for the program...
-                    sendMessage(JSON.stringify({ program: header.source, version: header.version, lang: header.lang, unpackaged: header.unpackaged, autoscreenshot:isWritable && !haveScreenshot }))
+                    sendMessage(JSON.stringify({ program: header.source, version: header.version, lang: header.lang, wasm: header.wasm, unpackaged: header.unpackaged, autoscreenshot:isWritable && !haveScreenshot }))
                 } else {
                     if ($dialog) $dialog.dialog("close")
                     $dialog = $("#version-error-dialog").clone().removeClass("template")
