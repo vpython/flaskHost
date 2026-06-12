@@ -1907,7 +1907,8 @@ $(function () {
                             }
 
                             var enclosingCall = getEnclosingCall(textUntilPosition)
-                            if (enclosingCall && !isInValuePosition(textUntilPosition)) {
+                            // vec/vector take positional args only — don't suggest x=, y=, z= kwargs
+                            if (enclosingCall && enclosingCall !== 'vec' && enclosingCall !== 'vector' && !isInValuePosition(textUntilPosition)) {
                                 var callParams = vpythonSignatures[enclosingCall] ||
                                     (window._vpythonUserFuncs && window._vpythonUserFuncs[enclosingCall]) || []
                                 return {
