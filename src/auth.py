@@ -16,18 +16,7 @@ from urllib.parse import urlparse, urlunparse
 from . import app
 from . import routes
 from . import ndb_models as models
-#
-# The 'flask_secret.py' file is not checked in to the git repository, but it's deployed with the application.
-#
-
-try:
-    # need to find a better way, but for now, this works
-    from . import flask_secret as secret
-except ImportError:
-    # if there is no "new" secret, just use the default
-    from . import default_secret as secret
-
-app.secret_key = secret.FN_SECRET_KEY
+from . import session_key
 
 CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
 
@@ -47,6 +36,14 @@ def get_redirect_uri():
 GRL = os.environ.get("GLOWSCRIPT_RUNNING_LOCALLY")
 GRL = GRL and GRL.lower()        # let's keep it case insenstive
 GRL = GRL not in (None, 'false')  # Anything but None or 'false'
+
+# Deployed, the session key comes from Secret Manager (or src/flask_secret.py),
+# and the app will not start without one; see src/session_key.py.
+app.secret_key = session_key.choose_key(
+    GRL,
+    from_secret_manager=lambda: session_key.read_secret_manager(
+        os.environ.get('GOOGLE_CLOUD_PROJECT') or 'glowscript', session_key.SECRET_NAME),
+    from_file=session_key.read_key_file)
 
 def fillAuthNamespace():
     """
